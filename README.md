@@ -95,3 +95,7 @@
 | --- | --- | --- |
 | `PORT` | `8787` | 服务监听端口 |
 | `FFMPEG` | `ffmpeg` | ffmpeg 可执行路径（PATH 查找或绝对路径） |
+
+## 示意图
+
+![[picture.png]]
