@@ -26,6 +26,7 @@
 ├── server.js               # Node 服务端（静态资源 + MOV 导出 API）
 ├── styles.css              # 页面样式
 ├── fonts.css               # 字体声明
+├── npmStart.bat            # Windows 端启动脚本
 ├── fonts/
 │   └── zcool-kuaile-miao.woff2   # 站酷快乐体（默认歌词字体）
 ├── Package.swift           # Swift 包定义（NativeRenderer）
@@ -43,7 +44,7 @@
 
 ## 快速开始
 
-1. 安装依赖：
+1. 安装依赖（Windows 端可直接运行 ``npmStart.bat``）：
 
    ```bash
    npm install
@@ -56,7 +57,7 @@
    # 产物位于 .build/release/NativeRenderer
    ```
 
-3. 启动服务：
+3. 启动服务（Windows 端可直接运行 ``npmStart.bat``）：
 
    ```bash
    npm start

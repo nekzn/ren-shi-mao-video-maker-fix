@@ -212,7 +212,120 @@ function makeConfig(track, index, total) {
   };
 }
 
+//new
+
 function renderTrackControls() {
+  els.tracks.innerHTML = "";
+  song.tracks.forEach((track, index) => {
+    const config = configs[index];
+    const card = document.createElement("article");
+    card.className = "track";
+    card.innerHTML = `
+      <div class="track-head">
+        <div class="track-name" title="${escapeHtml(config.name)}">${escapeHtml(config.name)}</div>
+        <div class="track-notes">${track.notes.length} notes</div>
+      </div>
+      <div class="preview">
+        <label>
+          <span>闭嘴图</span>
+          <input data-kind="closedImage" type="file" accept="image/*" />
+          <div class="swatch" data-swatch="closedImage">未选择</div>
+        </label>
+        <label>
+          <span>张嘴图</span>
+          <input data-kind="openImage" type="file" accept="image/*" />
+          <div class="swatch" data-swatch="openImage">未选择</div>
+        </label>
+      </div>
+      <div class="grid">
+        <div class="range-control">
+          <div class="range-header">
+            <span>X 位置</span>
+            <input data-kind="x-num" type="number" min="0" max="${els.canvas.width}" value="${Math.round(config.x)}" step="1" class="num-input" />
+          </div>
+          <input data-kind="x" type="range" min="0" max="${els.canvas.width}" value="${config.x}" step="1" />
+        </div>
+
+        <div class="range-control">
+          <div class="range-header">
+            <span>Y 位置</span>
+            <input data-kind="y-num" type="number" min="0" max="${els.canvas.height}" value="${Math.round(config.y)}" step="1" class="num-input" />
+          </div>
+          <input data-kind="y" type="range" min="0" max="${els.canvas.height}" value="${config.y}" step="1" />
+        </div>
+
+        <div class="range-control">
+          <div class="range-header">
+            <span>缩放</span>
+            <input data-kind="scale-num" type="number" min="0.1" max="5" value="${config.scale}" step="0.01" class="num-input" />
+          </div>
+          <input data-kind="scale" type="range" min="0.1" max="5" value="${config.scale}" step="0.01" />
+        </div>
+
+        <div class="range-control">
+          <div class="range-header">
+            <span>Tilt 上限</span>
+            <input data-kind="tilt-num" type="number" min="0" max="28" value="${config.tilt}" step="1" class="num-input" />
+          </div>
+          <input data-kind="tilt" type="range" min="0" max="28" value="${config.tilt}" step="1" />
+        </div>
+      </div>
+    `;
+
+    for (const input of card.querySelectorAll("input")) {
+      input.addEventListener("input", (event) => updateConfig(event, index, card));
+      input.addEventListener("change", (event) => updateConfig(event, index, card));
+    }
+    for (const kind of ["closedImage", "openImage"]) {
+      if (!config[kind]) continue;
+      const swatch = card.querySelector(`[data-swatch="${kind}"]`);
+      renderSwatch(swatch, config[kind]);
+    }
+    for (const kind of ["closedImage", "openImage"]) {
+      if (config[kind]) continue;
+      const inherited = imageForKind(kind);
+      if (inherited) renderSwatch(card.querySelector(`[data-swatch="${kind}"]`), inherited, "默认");
+    }
+    els.tracks.appendChild(card);
+  });
+}
+
+async function updateConfig(event, index, card) {
+  const input = event.currentTarget;
+  const kind = input.dataset.kind;
+  const config = configs[index];
+
+  if (input.type === "file") {
+    const file = input.files[0];
+    if (!file) return;
+    config[`${kind}DataUrl`] = await fileToDataUrl(file);
+    config[kind] = await imageFromDataUrl(config[`${kind}DataUrl`]);
+    await saveFile(`track-${index}-${kind}`, file);
+    const swatch = card.querySelector(`[data-swatch="${kind}"]`);
+    renderSwatch(swatch, config[kind]);
+  } else if (kind.endsWith("-num")) {
+    // 當手動輸入數字時，同步更新 Range Slider
+    const baseKind = kind.replace("-num", "");
+    const rangeInput = card.querySelector(`[data-kind="${baseKind}"]`);
+    if (rangeInput) {
+      rangeInput.value = input.value;
+      config[baseKind] = Number(input.value);
+    }
+  } else {
+    // 當拖拉 Range Slider 時，同步更新 Number 框
+    const numInput = card.querySelector(`[data-kind="${kind}-num"]`);
+    if (numInput) {
+      numInput.value = input.value;
+    }
+    config[kind] = Number(input.value);
+  }
+  saveState();
+  drawFrame(currentTime());
+}
+
+//newend
+
+/*function renderTrackControls() {
   els.tracks.innerHTML = "";
   song.tracks.forEach((track, index) => {
     const config = configs[index];
@@ -290,7 +403,7 @@ async function updateConfig(event, index, card) {
   }
   saveState();
   drawFrame(currentTime());
-}
+}*/
 
 function renderSwatch(swatch, image, label = "") {
   swatch.innerHTML = "";
@@ -374,6 +487,13 @@ function drawFrame(time, options = {}) {
     const active = activeNotes(track, time);
     const note = active.length ? active.reduce((highest, current) => (current.pitch > highest.pitch ? current : highest)) : null;
     drawCharacter(config, note, time, index);
+    
+    //new
+    
+    drawLyric(config, track, time);
+    
+    //newend
+
   });
 }
 
@@ -470,7 +590,7 @@ function drawPlaceholder(config, isOpen, size) {
   ctx.stroke();
 }
 
-function drawLyric(config, track, time) {
+/*function drawLyric(config, track, time) {
   const lyric = currentLyric(track, time);
   if (!lyric) return;
 
@@ -506,9 +626,99 @@ function drawLyric(config, track, time) {
     ctx.fillText(line, x, textY + lineHeight * index + lineHeight / 2);
   });
   ctx.restore();
+}*/
+
+//new
+
+function drawLyric(config, track, time) {
+  const lyric = currentLyric(track, time);
+  if (!lyric) return;
+
+  const age = time - lyric.time;
+  const floatProgress = clamp(age / LYRIC_FLOAT_DURATION, 0, 1);
+  const eased = 1 - (1 - floatProgress) ** 3;
+  const fadeStart = LYRIC_FLOAT_DURATION + LYRIC_HOLD_DURATION;
+  const alpha = age <= fadeStart ? 1 : 1 - clamp((age - fadeStart) / LYRIC_FADE_DURATION, 0, 1);
+  if (alpha <= 0) return;
+
+  const opacity = Number(els.lyricOpacity.value);
+  const finalAlpha = alpha * opacity;
+
+  const size = Math.min(els.canvas.width, els.canvas.height) * CHARACTER_SIZE_RATIO * config.scale;
+
+  // 1. 計算字型大小
+  // 1. 計算字型大小（基礎大小 + 大小偏移）
+  const sizeOffset = Number(document.getElementById('lyricSizeOffset')?.value ?? 0);
+  const baseFontSize = clamp(size * 0.22, 18, 96);
+  //確保 fontSize 變大/變細
+  const fontSize = Math.max(8, baseFontSize + sizeOffset);
+
+  // 2. 計算基礎 X, Y 中心位置
+  const manualOffsetX = Number(document.getElementById('lyricOffsetX')?.value ?? 0);
+  const manualOffsetY = Number(document.getElementById('lyricOffsetY')?.value ?? 0);
+
+  const baseX = clamp(config.x, 18, els.canvas.width - 18) + manualOffsetX;
+  // 基準 Y 軸 (人物上方固定距離)
+  const baseY = config.y - size - 28 - Number(els.lyricHeight.value) - eased * 120 + manualOffsetY;
+
+  const maxWidth = Math.max(120, Math.min(els.canvas.width * 0.42, size * 2.8));
+  const fontName = els.lyricFont.value || "sans-serif";
+  const lyricFont = `700 ${fontSize}px "${fontName}"`;
+  const lines = wrapText(lyric.text, maxWidth, lyricFont);
+  const lineHeight = fontSize * 1.22;
+
+  // 3. 旋轉與搖擺計算
+  const manualRotation = Number(document.getElementById('lyricRotation')?.value ?? 0);
+  const jitterAmount = Number(document.getElementById('lyricJitter')?.value ?? 0);
+
+  const seed = lyric.time * 1000;
+  const jitterX = getPseudoRandom(seed) * jitterAmount;
+  const jitterY = getPseudoRandom(seed + 1) * jitterAmount;
+  const jitterRot = getPseudoRandom(seed + 2) * (jitterAmount * 0.5);
+
+  const totalRotationRad = ((manualRotation + jitterRot) * Math.PI) / 180;
+
+  ctx.save();
+  ctx.globalAlpha = finalAlpha;
+
+  // 💡 直接將 baseY 設為旋轉與繪製嘅中心點，字體放大時就會以中心為基準向四周膨脹，唔會再上下位移！
+  const centerX = baseX + jitterX;
+  const centerY = baseY + jitterY;
+
+  ctx.translate(centerX, centerY);
+  ctx.rotate(totalRotationRad);
+
+  ctx.fillStyle = els.lyricColor.value;
+  ctx.font = lyricFont;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  lines.forEach((line, index) => {
+    // 依據多行文字計算相對偏移，確保整體垂直居中
+    const offsetY = (index - (lines.length - 1) / 2) * lineHeight;
+    ctx.fillText(line, 0, offsetY);
+  });
+
+  ctx.restore();
 }
 
 function currentLyric(track, time) {
+  // 如果該軌道冇歌詞，就退回使用全域 song.lyrics
+  const lyricsSource = track.lyrics?.length ? track.lyrics : song.lyrics;
+  if (!lyricsSource?.length) return null;
+
+  let lyric = null;
+  for (const candidate of lyricsSource) {
+    if (candidate.time <= time) lyric = candidate;
+    else break;
+  }
+  if (!lyric || time - lyric.time > LYRIC_TOTAL_DURATION) return null;
+  return lyric;
+}
+
+//newend
+
+/*function currentLyric(track, time) {
   if (!track.lyrics?.length) return null;
   let lyric = null;
   for (const candidate of track.lyrics) {
@@ -517,7 +727,7 @@ function currentLyric(track, time) {
   }
   if (!lyric || time - lyric.time > LYRIC_TOTAL_DURATION) return null;
   return lyric;
-}
+}*/
 
 function wrapText(text, maxWidth, font) {
   ctx.save();
@@ -795,12 +1005,21 @@ async function buildRenderPayload() {
     duration: song.duration,
     transparent: els.transparentExport.checked,
     lyricColor: els.lyricColor.value,
-    lyricOpacity: Number(els.lyricOpacity.value),  // 新增
+    lyricOpacity: Number(els.lyricOpacity.value),
     lyricFont: els.lyricFont.value,
     lyricHeight: Number(els.lyricHeight.value),
+    
+    //傳送新新增的歌詞調校參數給後端
+    lyricSizeOffset: Number(document.getElementById('lyricSizeOffset')?.value ?? 0),
+    lyricOffsetX: Number(document.getElementById('lyricOffsetX')?.value ?? 0),
+    lyricOffsetY: Number(document.getElementById('lyricOffsetY')?.value ?? 0),
+    lyricRotation: Number(document.getElementById('lyricRotation')?.value ?? 0),
+    lyricJitter: Number(document.getElementById('lyricJitter')?.value ?? 0),
+
     tracks: song.tracks.map((track) => ({
-      notes: track.notes,
-      lyrics: track.lyrics,
+      notes: track.notes || [],
+      //防護措施：確保 lyrics 永遠是陣列，絕不為 undefined
+      lyrics: track.lyrics || [], 
     })),
     configs: configs.map((config) => ({
       x: config.x,
@@ -973,6 +1192,12 @@ function saveState() {
       lyricOpacity: els.lyricOpacity.value,
       lyricFont: els.lyricFont.value,
       lyricHeight: els.lyricHeight.value,
+      // 💡 新增：保存字體大小與偏移相關數值
+      lyricSizeOffset: document.getElementById('lyricSizeOffset')?.value ?? 0,
+      lyricOffsetX: document.getElementById('lyricOffsetX')?.value ?? 0,
+      lyricOffsetY: document.getElementById('lyricOffsetY')?.value ?? 0,
+      lyricRotation: document.getElementById('lyricRotation')?.value ?? 0,
+      lyricJitter: document.getElementById('lyricJitter')?.value ?? 0,
       configs: configs.map((config) => ({
         x: config.x,
         y: config.y,
@@ -993,6 +1218,10 @@ async function restoreState() {
       els.videoHeight.value = state.videoHeight ?? els.videoHeight.value;
       els.fps.value = state.fps ?? els.fps.value;
       els.volume.value = state.volume ?? els.volume.value;
+      //new
+      const volInp = document.getElementById('volumeInput');
+      if (volInp) volInp.value = els.volume.value;
+      //newend
       els.transparentExport.checked = Boolean(state.transparentExport);
       els.lyricColor.value = state.lyricColor ?? els.lyricColor.value;
       els.lyricOpacity.value = state.lyricOpacity ?? els.lyricOpacity.value;
@@ -1042,6 +1271,19 @@ async function restoreState() {
       renderTrackControls();
     }
     drawFrame(currentTime());
+
+    // 在 restoreState() 的 try { ... } 區塊內補上：
+    if (state) {
+      // ...原有的代碼...
+
+      //新增：還原字體大小與偏移數值
+      const sizeOffEl = document.getElementById('lyricSizeOffset');
+      if (sizeOffEl && state.lyricSizeOffset !== undefined) {
+        sizeOffEl.value = state.lyricSizeOffset;
+        const sizeOffInp = document.getElementById('lyricSizeOffsetInput');
+        if (sizeOffInp) sizeOffInp.value = state.lyricSizeOffset;
+      }
+    }
   } finally {
     restoring = false;
   }
@@ -1333,3 +1575,154 @@ function clamp(value, min, max) {
 resizeCanvas();
 drawEmpty();
 restoreState();
+
+//new
+
+// 通用綁定 Range Slider 與 Number 輸入框
+function bindRangeAndNumber(rangeId, numberId) {
+  const rangeEl = document.getElementById(rangeId);
+  const numberEl = document.getElementById(numberId);
+  if (!rangeEl || !numberEl) return;
+
+  const triggerUpdate = () => {
+    saveState();
+    drawFrame(currentTime()); //確保每次拉 Slider 都即時重新畫 Canvas！
+  };
+
+  rangeEl.addEventListener('input', () => {
+    numberEl.value = rangeEl.value;
+    triggerUpdate();
+  });
+
+  numberEl.addEventListener('input', () => {
+    let val = parseFloat(numberEl.value);
+    if (isNaN(val)) return;
+    
+    const min = parseFloat(rangeEl.min);
+    const max = parseFloat(rangeEl.max);
+    val = clamp(val, min, max);
+
+    rangeEl.value = val;
+    triggerUpdate();
+  });
+}
+
+// 統一綁定所有控制項 (確保 lyricSizeOffset 有包含在內)
+[
+  ['volume', 'volumeInput'],
+  ['lyricOpacity', 'lyricOpacityInput'],
+  ['lyricHeight', 'lyricHeightInput'],
+  ['lyricSizeOffset', 'lyricSizeOffsetInput'],
+  ['lyricOffsetX', 'lyricOffsetXInput'],
+  ['lyricOffsetY', 'lyricOffsetYInput'],
+  ['lyricRotation', 'lyricRotationInput'],
+  ['lyricJitter', 'lyricJitterInput']
+].forEach(([rangeId, numberId]) => bindRangeAndNumber(rangeId, numberId));
+
+// 字體選單連動
+const lyricFontSelect = document.getElementById('lyricFontSelect');
+const lyricFontInput = document.getElementById('lyricFont');
+if (lyricFontSelect && lyricFontInput) {
+  lyricFontSelect.addEventListener('change', () => {
+    lyricFontInput.value = lyricFontSelect.value;
+    saveState();
+    drawFrame(currentTime());
+  });
+}
+
+// 預先準備的常見跨平台/中英文常見系統字型清單
+const POPULAR_FONTS = [
+  // 繁體中文
+  "Microsoft JhengHei", "PMingLiU", "MingLiU", "DFKai-SB", "PingFang TC", "Heiti TC",
+  // 簡體中文
+  "Microsoft YaHei", "SimSun", "SimHei", "KaiTi", "STHeiti",
+  // 日文 / 韓文
+  "Meiryo", "MS Gothic", "Yu Gothic", "Malgun Gothic",
+  // 英文無襯線 (Sans-serif)
+  "Arial", "Arial Black", "Impact", "Trebuchet MS", "Verdana", "Tahoma", "Segoe UI", "Helvetica",
+  // 英文襯線 (Serif)
+  "Times New Roman", "Georgia", "Garamond", "Baskerville",
+  // 手寫 / 藝術 / 等寬
+  "Comic Sans MS", "Courier New", "Consolas"
+];
+
+// Firefox 相容：透過 Canvas 字體寬度比對檢測系統是否安裝該字型
+function isFontAvailable(fontName) {
+  const testCanvas = document.createElement("canvas");
+  const testCtx = testCanvas.getContext("2d");
+  const testText = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const baseSize = "72px ";
+
+  // 使用三種標準後備字型作為基準測試
+  testCtx.font = baseSize + "monospace";
+  const monoWidth = testCtx.measureText(testText).width;
+  testCtx.font = baseSize + "sans-serif";
+  const sansWidth = testCtx.measureText(testText).width;
+  testCtx.font = baseSize + "serif";
+  const serifWidth = testCtx.measureText(testText).width;
+
+  // 測試目標字型
+  testCtx.font = baseSize + `"${fontName}", monospace`;
+  const testMono = testCtx.measureText(testText).width;
+  testCtx.font = baseSize + `"${fontName}", sans-serif`;
+  const testSans = testCtx.measureText(testText).width;
+  testCtx.font = baseSize + `"${fontName}", serif`;
+  const testSerif = testCtx.measureText(testText).width;
+
+  return testMono !== monoWidth || testSans !== sansWidth || testSerif !== serifWidth;
+}
+
+// 按鈕事件綁定
+const btnLoadSystemFonts = document.getElementById('btnLoadSystemFonts');
+if (btnLoadSystemFonts) {
+  btnLoadSystemFonts.addEventListener('click', async () => {
+    const fontFamilies = new Set();
+
+    // 1. 若支援 原生 Chrome / Edge Local Fonts API 則優先使用
+    if ('queryLocalFonts' in window) {
+      try {
+        const availableFonts = await window.queryLocalFonts();
+        availableFonts.forEach(f => fontFamilies.add(f.family));
+      } catch (err) {
+        console.warn('原生 API 被拒絕，切換至相容檢測模式', err);
+      }
+    }
+
+    // 2. 若為 Firefox 或原生 API 未成功，使用 Canvas 字型檢測 Polyfill
+    if (fontFamilies.size === 0) {
+      POPULAR_FONTS.forEach(font => {
+        if (isFontAvailable(font)) {
+          fontFamilies.add(font);
+        }
+      });
+    }
+
+    // 3. 更新下拉選單
+    if (fontFamilies.size > 0) {
+      lyricFontSelect.innerHTML = '';
+      
+      // 補上預設通用後備選項
+      const defaultOption = document.createElement('option');
+      defaultOption.value = 'sans-serif';
+      defaultOption.textContent = '預設無襯線 (sans-serif)';
+      lyricFontSelect.appendChild(defaultOption);
+
+      fontFamilies.forEach(family => {
+        const option = document.createElement('option');
+        option.value = family;
+        option.textContent = family;
+        lyricFontSelect.appendChild(option);
+      });
+
+      alert(`成功載入 ${fontFamilies.size} 種可用系統字體！`);
+    } else {
+      alert('無法取得系統字體。');
+    }
+  });
+}
+
+// 偽隨機數產生器
+function getPseudoRandom(seed) {
+  const x = Math.sin(seed) * 10000;
+  return (x - Math.floor(x)) * 2 - 1;
+}

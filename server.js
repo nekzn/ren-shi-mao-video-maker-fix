@@ -324,35 +324,50 @@ function drawServerLyric(ctx, canvas, project, config, track, time) {
   const alpha = age <= fadeStart ? 1 : 1 - clamp((age - fadeStart) / LYRIC_FADE_DURATION, 0, 1);
   if (alpha <= 0) return;
 
-  // 读取透明度滑块的值，与 alpha 相乘
   const opacity = Number(project.lyricOpacity ?? 1);
   const finalAlpha = alpha * opacity;
 
   const size = Math.min(canvas.width, canvas.height) * CHARACTER_SIZE_RATIO * config.scale;
-  const x = clamp(config.x, 18, canvas.width - 18);
-  const y = Math.max(32, config.y - size - 28 - Number(project.lyricHeight || 0) - eased * 120);
-  const fontSize = clamp(size * 0.22, 18, 96);
+  
+  //1. 讀取與計算新欄位：字體大小
+  const sizeOffset = Number(project.lyricSizeOffset ?? 0);
+  const baseFontSize = clamp(size * 0.22, 18, 96);
+  const fontSize = Math.max(8, baseFontSize + sizeOffset);
+
+  //2. 讀取與計算 X / Y 偏移
+  const manualOffsetX = Number(project.lyricOffsetX ?? 0);
+  const manualOffsetY = Number(project.lyricOffsetY ?? 0);
+  const baseX = clamp(config.x, 18, canvas.width - 18) + manualOffsetX;
+  const baseY = config.y - size - 28 - Number(project.lyricHeight || 0) - eased * 120 + manualOffsetY;
+
   const fontFamily = project.lyricFont || '"ZCOOL KuaiLe", system-ui, sans-serif';
   const font = `700 ${fontSize}px ${fontFamily}`;
   const maxWidth = Math.max(120, Math.min(canvas.width * 0.42, size * 2.8));
   const lines = wrapText(ctx, lyric.text, maxWidth, font);
   const lineHeight = fontSize * 1.22;
-  const textY = y - lines.length * lineHeight;
 
   ctx.save();
-  ctx.globalAlpha = finalAlpha;  // ← 改成 finalAlpha
+  ctx.globalAlpha = finalAlpha;
+
+  //3. 以 baseY 作為中心繪製，避免字體放大時 Y 軸偏移
+  ctx.translate(baseX, baseY);
   ctx.fillStyle = project.lyricColor || "#171b1f";
   ctx.font = font;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
   lines.forEach((line, lineIndex) => {
-    ctx.fillText(line, x, textY + lineHeight * lineIndex + lineHeight / 2);
+    const offsetY = (lineIndex - (lines.length - 1) / 2) * lineHeight;
+    ctx.fillText(line, 0, offsetY);
   });
+
   ctx.restore();
 }
 
 function currentLyric(track, time) {
-  if (!track.lyrics?.length) return null;
+  //安全防護：若 track 無效或 track.lyrics 不是陣列，直接 return null[cite: 3]
+  if (!track || !Array.isArray(track.lyrics) || track.lyrics.length === 0) return null;
+  
   let lyric = null;
   for (const candidate of track.lyrics) {
     if (candidate.time <= time) lyric = candidate;

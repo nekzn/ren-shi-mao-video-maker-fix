@@ -50,8 +50,11 @@
               <span>帧率</span>
               <input id="fps" type="number" min="12" max="60" value="60" />
             </label>
-            <label>
-              <span>音量</span>
+            <label class="range-control">
+                <div class="range-header">
+                  <span>音量</span>
+                  <input id="volumeInput" type="number" min="0" max="1" step="0.01" value="0.25" class="num-input" />
+                </div>
               <input id="volume" type="range" min="0" max="1" value="0.25" step="0.01" />
             </label>
           </div>
@@ -84,23 +87,85 @@
               <span>歌词颜色</span>
               <input id="lyricColor" type="color" value="#171b1f" />
             </label>
-            <label>
-              <span>歌词字体</span>
-              <select id="lyricFont">
+            <label class="range-control">
+              <div class="range-header">
+                <span>歌词字体</span>
+                <button id="btnLoadSystemFonts" type="button" class="btn-small">載入系統字體</button>
+              </div>
+              <select id="lyricFontSelect" class="num-input" style="width:100%;">
+                <option value="system-ui, sans-serif">預設無襯線 (sans-serif)</option>
+                <option value='"ZCOOL KuaiLe", system-ui, sans-serif' selected>站酷快乐体（有機會無法調整大小）</option>
+                <option value='cursive'>手写风格</option>
+                <option value='"PingFang SC", "Microsoft YaHei", sans-serif'>苹方 / 微软雅黑（有機會無法調整大小）</option>
+                <option value="serif">襯線體 (serif)</option>
+                <option value="monospace">等寬體 (monospace)</option>
+                <option value="Arial">Arial</option>
+                <option value="Microsoft JhengHei">微軟正黑體</option>
+
+              </select>
+              <input id="lyricFont" type="hidden" value="sans-serif" />
+              <!--<select id="lyricFont">
                 <option value='"ZCOOL KuaiLe", system-ui, sans-serif' selected>站酷快乐体</option>
                 <option value="system-ui, sans-serif">系统黑体</option>
                 <option value='"PingFang SC", "Microsoft YaHei", sans-serif'>苹方 / 微软雅黑</option>
                 <option value='serif'>宋体风格</option>
                 <option value='cursive'>手写风格</option>
                 <option value='monospace'>等宽字体</option>
-              </select>
+              </select>-->
             </label>
-            <label class="wide">
-              <span>颜色透明度</span>
+
+            <label class="range-control">
+              <div class="range-header">
+                <span>字體大小</span>
+                <input id="lyricSizeOffsetInput" type="number" min="-100" max="1000" value="0" step="1" class="num-input" />
+              </div>
+              <input id="lyricSizeOffset" type="range" min="-100" max="1000" value="0" step="1" />
+            </label>
+
+            <label class="range-control">
+              <div class="range-header">
+                <span>X 位置偏移</span>
+                <input id="lyricOffsetXInput" type="number" min="-500" max="500" value="0" step="1" class="num-input" />
+              </div>
+              <input id="lyricOffsetX" type="range" min="-500" max="500" value="0" step="1" />
+            </label>
+
+            <!--<label class="range-control">
+              <div class="range-header">
+                <span title="功能與《歌词高度》重複了" style="color: darkred;">Y 位置偏移（請忽略）</span>
+                <input id="lyricOffsetYInput" type="number" min="-500" max="500" value="0" step="1" class="num-input" />
+              </div>
+              <input id="lyricOffsetY" type="range" min="-500" max="500" value="0" step="1" />
+            </label>-->
+
+            <label class="range-control">
+              <div class="range-header">
+                <span>手動旋轉角度 (&deg;)</span>
+                <input id="lyricRotationInput" type="number" min="-180" max="180" value="0" step="1" class="num-input" />
+              </div>
+              <input id="lyricRotation" type="range" min="-180" max="180" value="0" step="1" />
+            </label>
+
+            <label class="range-control">
+              <div class="range-header">
+                <span>隨機/搖擺幅度</span>
+                <input id="lyricJitterInput" type="number" min="0" max="100" value="0" step="1" class="num-input" />
+              </div>
+              <input id="lyricJitter" type="range" min="0" max="100" value="0" step="1" />
+            </label>
+
+            <label class="wide range-control">
+              <div class="range-header">
+                <span>颜色透明度</span>
+                <input id="lyricOpacityInput" type="number" min="0" max="1" step="0.01" value="1" class="num-input" />
+              </div>
               <input id="lyricOpacity" type="range" min="0" max="1" step="0.01" value="1" />
             </label>
-            <label class="wide">
-              <span>歌词高度</span>
+            <label class="wide range-control">
+              <div class="range-header">
+                <span title="Y 位置偏移">歌词高度</span>
+                <input id="lyricHeightInput" type="number" min="-420" max="220" step="1" value="0" class="num-input" />
+              </div>
               <input id="lyricHeight" type="range" min="-420" max="220" value="0" step="1" />
             </label>
           </div>
